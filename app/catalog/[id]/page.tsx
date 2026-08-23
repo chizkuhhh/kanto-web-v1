@@ -1,8 +1,16 @@
+import BackButton from "@/components/backButton"
 import Gallery from "@/components/gallery"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import { SiShopee, SiTiktok } from "react-icons/si"
+
+const categoryLabels: Record<string, string> = {
+    PADDLE: "Paddles",
+    ACCESSORY: "Accessories",
+    ACTIVEWEAR: "Activewear",
+}
 
 export default async function ProductPage({
     params,
@@ -19,8 +27,32 @@ export default async function ProductPage({
         notFound()
 
     return (
-        <div className="flex flex-col items-center px-5 pt-24 pb-12 md:px-8 bg-black-haze-100 min-h-screen">
+        <div className="flex flex-col items-center px-5 pt-32 pb-12 md:px-8 bg-black-haze-100 min-h-screen">
             <div className="w-full max-w-2xl">
+                <div className="flex mb-8 w-full justify-between">
+                    <BackButton />
+
+                    <Breadcrumb>
+                        <BreadcrumbList>
+                            <BreadcrumbItem>
+                                <BreadcrumbLink href="/catalog">Products</BreadcrumbLink>
+                            </BreadcrumbItem>
+
+                            <BreadcrumbSeparator />
+
+                            <BreadcrumbItem>
+                                <BreadcrumbLink href={`/catalog?category=${product.category}`}>{categoryLabels[product.category]}</BreadcrumbLink>
+                            </BreadcrumbItem>
+
+                            <BreadcrumbSeparator />
+
+                            <BreadcrumbItem>
+                                <BreadcrumbPage className="line-clamp-1 max-w-18 md:max-w-24">{product.name}</BreadcrumbPage>
+                            </BreadcrumbItem>
+                        </BreadcrumbList>
+                    </Breadcrumb>
+                </div>
+
                 <Gallery images={product.images} name={product.name}/>
 
                 <h1 className="text-2xl font-bold mt-6 text-mine-shaft-900">{product.name}</h1>

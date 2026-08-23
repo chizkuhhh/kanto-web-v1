@@ -8,7 +8,7 @@ export default function ProductCard({ product }: { product: PrismaProduct }) {
             href={`/catalog/${product.id}`}
             className="flex flex-col h-full rounded-2xl overflow-hidden bg-black-haze-50 border border-black-haze-200 hover:shadow-md transition-shadow"
         >
-            <div className="relative aspect-square shrink-0">
+            <div className="relative aspect-4/5 shrink-0">
                 <Image
                     src={product.images[0]}
                     alt={product.name}

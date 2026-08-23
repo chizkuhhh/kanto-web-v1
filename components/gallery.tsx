@@ -9,7 +9,7 @@ export default function Gallery({ images, name }: { images: string[]; name: stri
 
     return (
         <div>
-            <div className="relative aspect-3/4 rounded-2xl overflow-hidden bg-black-haze-200">
+            <div className="relative aspect-4/5 rounded-2xl overflow-hidden bg-black-haze-200">
                 <Image src={activeImage} alt={name} fill priority className="object-cover" />
             </div>
 
