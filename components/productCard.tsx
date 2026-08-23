@@ -24,7 +24,7 @@ export default function ProductCard({ product }: { product: PrismaProduct }) {
                     dangerouslySetInnerHTML={{__html: product.description}}
                 />
                 {product.price && (
-                    <p className="mt-1 font-semibold text-mine-shaft-800 items-baseline">₱{product.price.toString()}</p>
+                    <p className="mt-1 font-semibold text-mine-shaft-800 self-end">₱{product.price.toString()}</p>
                 )}
             </div>
         </Link>
