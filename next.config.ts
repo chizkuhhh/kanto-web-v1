@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
         hostname: "pub-034b5a34c49448b3af55d494308bdcdb.r2.dev",
       }
     ]
+  },
+  outputFileTracingIncludes: {
+    "/*": ["./lib/generated/prisma/**/*"],
   }
 };
 
