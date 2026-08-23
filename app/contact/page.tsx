@@ -1,7 +1,7 @@
 export default function Contact() {
     return (
         <div>
-            Contact us placeholder
+            Contact Us Placeholder
         </div>
     )
 }
