@@ -1,4 +1,4 @@
-import { Product as PrismaProduct } from "@/lib/generated/prisma/client";
+import { Product as PrismaProduct } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 

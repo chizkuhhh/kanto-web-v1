@@ -1,6 +1,6 @@
 import CategoryTabs from "@/components/categoryTabs"
 import ProductCard from "@/components/productCard"
-import { Category } from "@/lib/generated/prisma/enums"
+import { Category } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { Suspense } from "react"
 
