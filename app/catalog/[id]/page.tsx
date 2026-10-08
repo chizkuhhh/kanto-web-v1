@@ -3,6 +3,7 @@ import Gallery from "@/components/gallery"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import { prisma } from "@/lib/prisma"
+import { getProduct } from "@/lib/products"
 import { notFound } from "next/navigation"
 import { SiShopee, SiTiktok } from "react-icons/si"
 
@@ -12,6 +13,11 @@ const categoryLabels: Record<string, string> = {
     ACTIVEWEAR: "Activewear",
 }
 
+export async function generateStaticParams() {
+    const products = await prisma.product.findMany({ select: { id: true } })
+    return products.map((p) => ({ id: p.id }))
+}
+
 export default async function ProductPage({
     params,
 }: {
@@ -19,9 +25,7 @@ export default async function ProductPage({
 }) {
     const { id } = await params
 
-    const product = await prisma.product.findUnique({
-        where: { id },
-    })
+    const product = await getProduct(id)
 
     if (!product)
         notFound()

@@ -10,7 +10,7 @@ export default function Gallery({ images, name }: { images: string[]; name: stri
     return (
         <div>
             <div className="relative aspect-4/5 rounded-2xl overflow-hidden bg-black-haze-200">
-                <Image src={activeImage} alt={name} fill priority className="object-cover" />
+                <Image src={activeImage} alt={name} fill priority sizes="(min-width: 672px) 672px, 100vw" className="object-cover" />
             </div>
 
             {images.length > 1 && (
@@ -24,7 +24,7 @@ export default function Gallery({ images, name }: { images: string[]; name: stri
                                 activeImage === img ? "border-mine-shaft-800" : "border-transparent"
                             )}
                         >
-                            <Image src={img} alt="" fill className="object-cover" />
+                            <Image src={img} alt="" fill sizes="64px" className="object-cover" />
                         </button>
                     ))}
                 </div>

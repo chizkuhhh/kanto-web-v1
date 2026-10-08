@@ -2,7 +2,7 @@ import CategoryTabs from "@/components/categoryTabs"
 import ProductCard from "@/components/productCard"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Category } from "@prisma/client"
-import { prisma } from "@/lib/prisma"
+import { getProductPage } from "@/lib/products"
 import { Suspense } from "react"
 import BackButton from "@/components/backButton"
 import Pagination from "@/components/pagination"
@@ -34,23 +34,14 @@ export default async function CatalogPage({
     const { category, sort, page } = await searchParams
     const currentPage = Math.max(1, Number(page) || 1)
 
-    let products, totalCount;
+    const where = category ? { category: category as Category } : undefined
 
-    try {
-        const where = category ? { category: category as Category } : undefined;
-        [products, totalCount] = await Promise.all([
-        prisma.product.findMany({
-            where,
-            orderBy: getOrderBy(sort),
-            skip: (currentPage - 1) * PAGE_SIZE,
-            take: PAGE_SIZE,
-        }),
-        prisma.product.count({ where }),
-        ]);
-    } catch (err) {
-        console.error("CATALOG PRISMA ERROR:", err);
-        throw err;
-    }
+    const { products, totalCount } = await getProductPage(
+        where,
+        getOrderBy(sort),
+        (currentPage - 1) * PAGE_SIZE,
+        PAGE_SIZE,
+    )
 
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -87,15 +78,17 @@ export default async function CatalogPage({
                 <CategoryTabs />
             </Suspense>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8 w-full max-w-5xl">
-                {products.map((product) => (
-                    <ProductCard key={product.id} product={product} />
+                {products.map((product, i) => (
+                    <ProductCard key={product.id} product={product} priority={i < 3} />
                 ))}
             </div>
             {products.length === 0 && (
                 <p className="mt-12 text-mine-shaft-500">No products in this category yet.</p>
             )}
             
-            <Pagination currentPage={currentPage} totalPages={totalPages} />
+            <Suspense fallback={null}>
+                <Pagination currentPage={currentPage} totalPages={totalPages} />
+            </Suspense>
         </div>
     )
 }
