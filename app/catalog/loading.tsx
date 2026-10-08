@@ -27,7 +27,7 @@ export default function CatalogLoading() {
                 </div>
             </div>
 
-            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black-haze-100/60 backdrop-blur-sm">
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black-haze-100/40 backdrop-blur-sm">
                 <Spinner className="size-10 text-mine-shaft-700" />
             </div>
         </>
