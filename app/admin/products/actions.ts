@@ -28,3 +28,36 @@ export async function saveProductAction(productId: string | null, formData: Form
   revalidatePath("/admin/products")
   redirect(`/admin/products/${id}?saved=1`)
 }
+
+export async function saveStockAction(productId: string, formData: FormData) {
+  await requireAdmin()
+
+  const variants = await prisma.variant.findMany({
+    where: { productId },
+    select: { id: true },
+  })
+
+  const changes = variants.flatMap((v) => {
+    const raw = String(formData.get(`stock_${v.id}`) ?? "").trim()
+    const prev = Number(formData.get(`prev_${v.id}`))
+    if (!/^\d{1,6}$/.test(raw))
+      throw new Error("Stock must be a whole number from 0 to 999999")
+    const next = Number(raw)
+    return next === prev ? [] : [{ id: v.id, prev, next }]
+  })
+
+  await prisma.$transaction(async (tx) => {
+    for (const c of changes) {
+      // Only updates if the stock still matches what the admin loaded.
+      // If an order changed it in the meantime, nothing is written.
+      const { count } = await tx.variant.updateMany({
+        where: { id: c.id, productId, stock: c.prev },
+        data: { stock: c.next },
+      })
+      if (count !== 1)
+        throw new Error("Stock changed while you were editing. Reload the page and try again.")
+    }
+  })
+
+  redirect(`/admin/products/${productId}?stock=saved`)
+}
