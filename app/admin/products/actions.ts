@@ -24,8 +24,7 @@ export async function saveProductAction(productId: string | null, formData: Form
     id = created.id
   }
 
-  // Clears the cached catalog and product pages so edits show up right away
   revalidateTag("products", "max")
   revalidatePath("/admin/products")
-  redirect(`/admin/products/${id}`)
+  redirect(`/admin/products/${id}?saved=1`)
 }
