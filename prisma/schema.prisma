@@ -1,11 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
@@ -20,15 +14,127 @@ enum Category {
   ACTIVEWEAR
 }
 
+enum OrderStatus {
+  PENDING
+  PAYMENT_CONFIRMED
+  BOOKED
+  DELIVERED
+  CANCELLED
+}
+
+enum DeliveryMethod {
+  LALAMOVE
+  JNT
+}
+
+enum Channel {
+  WEB
+  MESSENGER
+  INSTAGRAM
+  MANUAL
+}
+
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  category    Category
-  price       Decimal? @db.Decimal(10, 2)
-  images      String[] // array of R2 URLs
-  shopeeUrl   String?
-  tiktokUrl   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String      @id @default(cuid())
+  name         String
+  description  String
+  category     Category
+  price        Decimal?    @db.Decimal(10, 2)
+  images       String[]    // array of R2 URLs
+  variations   Json        @default("[]")
+  weightGrams  Int?
+  shopeeUrl    String?
+  tiktokUrl    String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  orderItems   OrderItem[]
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  orders    Order[]
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
+model Order {
+  id                   String         @id @default(cuid())
+  orderNumber          Int            @unique @default(autoincrement())
+  status               OrderStatus    @default(PENDING)
+  channel              Channel
+  deliveryMethod       DeliveryMethod
+  customerId           String?
+  customer             Customer?      @relation(fields: [customerId], references: [id])
+
+  // Copied onto the order, not linked, so old orders keep their original details
+  recipientName        String
+  phone                String
+  address              String
+  city                 String
+  province             String
+  postalCode           String?
+
+  paymentMethod        String
+  productTotal         Decimal        @db.Decimal(10, 2)
+  shippingFee          Decimal        @default(0) @db.Decimal(10, 2)
+  codFee               Decimal?       @db.Decimal(10, 2)
+  pickupAt             DateTime?
+
+  trackingNumber       String?
+  paymentReference     String?
+  notes                String?
+  personalDataPurgedAt DateTime?
+
+  items                OrderItem[]
+  events               OrderEvent[]
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id                 String   @id @default(cuid())
+  orderId            String
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId          String?
+  product            Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // Copied at order time, so later edits don't rewrite history
+  productName        String
+  unitPrice          Decimal  @db.Decimal(10, 2)
+  quantity           Int
+  selectedVariations Json?
+}
+
+model OrderEvent {
+  id         String       @id @default(cuid())
+  orderId    String
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  note       String?
+  createdAt  DateTime     @default(now())
+
+  @@index([orderId])
+}
+
+model JtZone {
+  id            String   @id @default(cuid())
+  name          String
+  provinces     String[]
+  rates         JtRate[]
+  lastCheckedAt DateTime?
+  updatedAt     DateTime @updatedAt
+}
+
+model JtRate {
+  id             String @id @default(cuid())
+  zoneId         String
+  zone           JtZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  maxWeightGrams Int
+  price          Decimal @db.Decimal(10, 2)
 }
