@@ -18,7 +18,7 @@ export default function Pagination({ currentPage, totalPages }: { currentPage: n
     }
 
     return (
-        <div>
+        <div className="mt-8">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                 <Button
                     key={p}
