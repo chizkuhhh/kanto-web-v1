@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { parseProductForm } from "@/lib/productForm"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
+import { syncVariants } from "@/lib/variantSync"
 
 async function requireAdmin() {
   const session = await auth()
@@ -16,13 +17,17 @@ export async function saveProductAction(productId: string | null, formData: Form
   await requireAdmin()
   const data = parseProductForm(formData)
 
-  let id = productId
-  if (id) {
-    await prisma.product.update({ where: { id }, data })
-  } else {
-    const created = await prisma.product.create({ data })
-    id = created.id
-  }
+  const id = await prisma.$transaction(async (tx) => {
+    let id = productId
+    if (id) {
+      await tx.product.update({ where: { id }, data })
+    } else {
+      const created = await tx.product.create({ data })
+      id = created.id
+    }
+    await syncVariants(tx, id, data.variations)
+    return id
+  })
 
   revalidateTag("products", "max")
   revalidatePath("/admin/products")

@@ -161,7 +161,8 @@ export async function createManualOrder(raw: unknown) {
           },
         },
       })
-      if (!variant) throw new Error(`${line.productName} has no stock record for these options`)
+      if (!variant || !variant.active)
+        throw new Error(`${line.productName} is not available in these options`)
 
       const { count } = await tx.variant.updateMany({
         where: { id: variant.id, stock: { gte: line.quantity } },

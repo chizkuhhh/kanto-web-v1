@@ -23,7 +23,7 @@ export default async function EditProductPage({
   const variants = await prisma.variant.findMany({
     where: { productId: id },
     orderBy: { optionsKey: "asc" },
-    select: { id: true, options: true, stock: true },
+    select: { id: true, options: true, stock: true, active: true },
   })
 
   return (
