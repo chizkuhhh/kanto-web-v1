@@ -5,6 +5,9 @@ import { getJtFee } from "@/lib/jt"
 import { isValidPickupTime } from "@/lib/schedule"
 import { PAYMENT_METHODS } from "@/lib/orderLabels"
 
+export const keyFor = (options: Record<string, string>) =>
+  Object.keys(options).sort().map((k) => `${k}=${options[k]}`).join("|")
+
 const COD = "Cash on delivery"
 
 const JT_REASON: Record<string, string> = {
@@ -146,8 +149,28 @@ export async function createManualOrder(raw: unknown) {
     codFee = quote.codFee
   }
 
-  return prisma.$transaction(async (tx) => {
-    // Reuse the customer if this phone number has ordered before
+    return prisma.$transaction(async (tx) => {
+    // Stock: check and decrement each variant. Any shortfall rolls back the whole order.
+    const variantIds: string[] = []
+    for (const line of lines) {
+      const variant = await tx.variant.findUnique({
+        where: {
+          productId_optionsKey: {
+            productId: line.productId,
+            optionsKey: keyFor(line.selectedVariations as Record<string, string>),
+          },
+        },
+      })
+      if (!variant) throw new Error(`${line.productName} has no stock record for these options`)
+
+      const { count } = await tx.variant.updateMany({
+        where: { id: variant.id, stock: { gte: line.quantity } },
+        data: { stock: { decrement: line.quantity } },
+      })
+      if (count !== 1) throw new Error(`Not enough stock for ${line.productName}`)
+      variantIds.push(variant.id)
+    }
+
     const existing = await tx.customer.findFirst({
       where: { phone },
       orderBy: { createdAt: "desc" },
@@ -174,7 +197,9 @@ export async function createManualOrder(raw: unknown) {
         codFee,
         pickupAt,
         notes: input.notes || null,
-        items: { create: lines },
+        items: {
+          create: lines.map((line, i) => ({ ...line, variantId: variantIds[i] })),
+        },
         events: {
           create: [{ fromStatus: null, toStatus: "PENDING", note: "Created manually" }],
         },

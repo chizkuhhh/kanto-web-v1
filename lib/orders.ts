@@ -38,7 +38,10 @@ export async function advanceOrder(orderId: string) {
 
 export async function cancelOrder(orderId: string, note?: string) {
   return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } })
+    const order = await tx.order.findUniqueOrThrow({
+      where: { id: orderId },
+      include: { items: true },
+    })
     if (order.status === "DELIVERED" || order.status === "CANCELLED")
       throw new Error("This order can't be cancelled")
 
@@ -47,6 +50,16 @@ export async function cancelOrder(orderId: string, note?: string) {
       data: { status: "CANCELLED" },
     })
     if (count !== 1) throw new Error("This order was just changed. Refresh and try again.")
+
+    // Return stock for items that were decremented at order time.
+    // Older orders have no variantId, so they're skipped.
+    for (const item of order.items) {
+      if (!item.variantId) continue
+      await tx.variant.update({
+        where: { id: item.variantId },
+        data: { stock: { increment: item.quantity } },
+      })
+    }
 
     await tx.orderEvent.create({
       data: { orderId, fromStatus: order.status, toStatus: "CANCELLED", note: note || null },
