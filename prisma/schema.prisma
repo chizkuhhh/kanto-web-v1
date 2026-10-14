@@ -157,3 +157,30 @@ model JtRate {
   maxWeightGrams Int
   price          Decimal @db.Decimal(10, 2)
 }
+
+model Conversation {
+  id          String    @id @default(cuid())
+  channel     Channel
+  senderId    String    // Meta's PSID (Messenger) or IGSID (Instagram)
+  customerId  String?
+  botPaused   Boolean   @default(false)
+  lastMessageAt DateTime @default(now())
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([channel, senderId])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String       // "customer" | "agent" | "human"
+  text           String
+  metaMessageId  String?      @unique
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}

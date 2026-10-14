@@ -28,5 +28,7 @@ export async function purgeOldCustomerDetails() {
     where: { createdAt: { lt: cutoff }, orders: { none: {} } },
   })
 
+  await prisma.conversation.deleteMany({ where: { lastMessageAt: { lt: cutoff } } })
+
   return count
 }
