@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { sendText } from "@/lib/meta"
+import { runAgent, type HistoryTurn } from "@/lib/agent/run"
 
 type MessagingEvent = {
   sender: { id: string }
@@ -7,22 +8,19 @@ type MessagingEvent = {
   message?: { mid: string; text?: string; is_echo?: boolean }
 }
 
-const PLACEHOLDER_REPLY =
-  "Thanks for messaging Kanto PH! Our order assistant is being set up. A team member will reply soon."
+const FALLBACK_REPLY =
+  "Sorry, I'm having trouble right now. A team member will get back to you shortly."
 
 export async function handleMessengerEvent(event: MessagingEvent) {
   const msg = event.message
-  if (!msg?.text) return // reads, deliveries, and attachments are ignored for now
+  if (!msg?.text) return
 
-  // For echoes, the customer is the recipient. For incoming messages, the sender.
   const customerId = msg.is_echo ? event.recipient.id : event.sender.id
 
   if (msg.is_echo) {
-    // Our own sends come back as echoes too. Those are already stored, so skip them.
     const ours = await prisma.message.findUnique({ where: { metaMessageId: msg.mid } })
     if (ours) return
 
-    // Anything else was sent by a person from the Page inbox: pause the bot for this customer
     const conv = await prisma.conversation.upsert({
       where: { channel_senderId: { channel: "MESSENGER", senderId: customerId } },
       create: { channel: "MESSENGER", senderId: customerId, botPaused: true },
@@ -34,7 +32,6 @@ export async function handleMessengerEvent(event: MessagingEvent) {
     return
   }
 
-  // Customer message. Skip anything we've already stored, since Meta can redeliver.
   const seen = await prisma.message.findUnique({ where: { metaMessageId: msg.mid } })
   if (seen) return
 
@@ -49,7 +46,26 @@ export async function handleMessengerEvent(event: MessagingEvent) {
 
   if (conv.botPaused) return
 
-  const reply = PLACEHOLDER_REPLY
+  // Last 30 turns, oldest first
+  const recent = await prisma.message.findMany({
+    where: { conversationId: conv.id },
+    orderBy: { createdAt: "desc" },
+    take: 12,
+    select: { role: true, text: true },
+  })
+  const history: HistoryTurn[] = recent
+    .reverse()
+    .map((m) => ({ role: m.role as HistoryTurn["role"], text: m.text }))
+
+  let reply: string
+  try {
+    reply = await runAgent({ conversationId: conv.id, channel: "MESSENGER" }, history)
+  } catch (err) {
+    console.error("Agent failed:", err)
+    reply = FALLBACK_REPLY
+  }
+  if (!reply) return
+
   const sentId = await sendText(customerId, reply)
   await prisma.message.create({
     data: {

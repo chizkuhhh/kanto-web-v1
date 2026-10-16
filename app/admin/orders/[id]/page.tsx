@@ -5,7 +5,10 @@ import { getNextStatus } from "@/lib/orders"
 import { formatManilaDateTime, formatOrderNumber, formatPeso } from "@/lib/format"
 import { CHANNEL_LABELS, DELIVERY_LABELS, STATUS_LABELS } from "@/lib/orderLabels"
 import OrderStatusBadge from "@/components/admin/orderStatusBadge"
-import { advanceOrderAction, cancelOrderAction, updateOrderDetailsAction } from "../actions"
+import { advanceOrderAction, cancelOrderAction, updateOrderDetailsAction, updatePickupTimeAction } from "../actions"
+import { getBookingSlots } from "@/lib/schedule"
+import { proofViewUrl } from "@/lib/paymentProofs"
+import CopyTrackingLink from "@/components/admin/copyTrackingLink"
 
 export const dynamic = "force-dynamic"
 
@@ -31,10 +34,12 @@ export default async function AdminOrderDetailPage({
   })
   if (!order) notFound()
 
-  const nextStatus = getNextStatus(order.status, order.deliveryMethod)
+  const nextStatus = getNextStatus(order.status, order.deliveryMethod, order.paymentMethod)
   const canCancel = order.status !== "DELIVERED" && order.status !== "CANCELLED"
   const isPurged = order.personalDataPurgedAt !== null
   const total = Number(order.productTotal) + Number(order.shippingFee) + Number(order.codFee ?? 0)
+  const proofUrl = order.paymentProofKey ? await proofViewUrl(order.paymentProofKey) : null
+  const slots = getBookingSlots().map((s) => ({ value: s.startsAt.toISOString(), label: s.label }))
 
   return (
     <div className="flex flex-col items-center px-5 pt-32 pb-12 md:px-8 bg-black-haze-100 min-h-screen">
@@ -52,7 +57,12 @@ export default async function AdminOrderDetailPage({
               {DELIVERY_LABELS[order.deliveryMethod] ?? order.deliveryMethod}
             </p>
           </div>
-          <OrderStatusBadge status={order.status} />
+          <div className="flex items-center gap-3">
+            {order.publicToken && (
+              <CopyTrackingLink url={`https://kanto-ph.com/order/${order.publicToken}`} />
+            )}
+            <OrderStatusBadge status={order.status} />
+          </div>
         </div>
 
         {/* Actions */}
@@ -111,20 +121,64 @@ export default async function AdminOrderDetailPage({
           </dl>
         </div>
 
+        {proofUrl && (
+          <div className={card}>
+            <h2 className="font-bold mb-2">Payment screenshot</h2>
+            <a href={proofUrl} target="_blank" rel="noopener noreferrer" className="text-sm underline">
+              View screenshot (link expires in 10 minutes)
+            </a>
+            {order.paymentProofAt && (
+              <p className="mt-1 text-xs text-mine-shaft-500">Uploaded {formatManilaDateTime(order.paymentProofAt)}</p>
+            )}
+          </div>
+        )}
+
         {/* Delivery */}
         <div className={card}>
           <h2 className="font-bold mb-3">Delivery</h2>
           {order.deliveryMethod === "LALAMOVE" ? (
-            <p className="text-sm">
-              Customer books Lalamove.{" "}
-              {order.pickupAt
-                ? <>Pickup time: <strong>{formatManilaDateTime(order.pickupAt)}</strong></>
-                : "No pickup time set."}
-            </p>
+            <>
+              <p className="text-sm">
+                Customer books Lalamove.{" "}
+                {order.pickupAt
+                  ? <>Pickup time: <strong>{formatManilaDateTime(order.pickupAt)}</strong></>
+                  : "No pickup time set."}
+              </p>
+              {order.lalamoveLink && (
+                <p className="mt-2 text-sm">
+                  <a href={order.lalamoveLink} target="_blank" rel="noopener noreferrer" className="underline">
+                    Open customer&apos;s Lalamove booking
+                  </a>
+                </p>
+              )}
+            </>
           ) : (
             <p className="text-sm">You book J&amp;T. Enter the tracking number below once booked.</p>
           )}
         </div>
+
+        {/* Pickup time: Lalamove only, until delivered or cancelled */}
+        {order.deliveryMethod === "LALAMOVE" && canCancel && (
+          <form action={updatePickupTimeAction.bind(null, order.id)} className={`${card} flex flex-col gap-3`}>
+            <h2 className="font-bold">Pickup time</h2>
+            <select name="pickupAt" required defaultValue={order.pickupAt?.toISOString() ?? ""} className={input}>
+              <option value="">Choose a time</option>
+              {order.pickupAt && !slots.some((s) => s.value === order.pickupAt!.toISOString()) && (
+                <option value={order.pickupAt.toISOString()}>
+                  {formatManilaDateTime(order.pickupAt)} (no longer open)
+                </option>
+              )}
+              {slots.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <div>
+              <button type="submit" className={button}>Save pickup time</button>
+            </div>
+          </form>
+        )}
 
         {/* Items */}
         <div className={card}>
@@ -161,7 +215,7 @@ export default async function AdminOrderDetailPage({
             {order.deliveryMethod === "JNT" && (
               <div className="flex justify-between"><span>Shipping</span><span>{formatPeso(Number(order.shippingFee))}</span></div>
             )}
-            {order.codFee && (
+            {Number(order.codFee ?? 0) > 0 && (
               <div className="flex justify-between"><span>COD fee</span><span>{formatPeso(Number(order.codFee))}</span></div>
             )}
             <div className="flex justify-between font-bold text-base mt-1"><span>Total</span><span>{formatPeso(total)}</span></div>

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { getProduct } from "@/lib/products"
 import { notFound } from "next/navigation"
 import { SiShopee, SiTiktok } from "react-icons/si"
+import AddToCart from "@/components/addToCart"
 
 const categoryLabels: Record<string, string> = {
     PADDLE: "Paddles",
@@ -72,6 +73,12 @@ export default async function ProductPage({
                 />
                 
                 <div className="flex flex-col gap-3 mt-6 items-center">
+                    {product.price && (
+                        <AddToCart
+                            productId={product.id}
+                            variations={(Array.isArray(product.variations) ? product.variations : []) as { type: string; options: string[] }[]}
+                        />
+                    )}
                     {product.shopeeUrl && (
                         <Button className="rounded-full h-12 bg-mine-shaft-800 hover:bg-mine-shaft-900 px-4">
                             <a href={product.shopeeUrl} target="_blank" rel="noopener noreferrer" className="flex gap-2">

@@ -1,12 +1,19 @@
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { DeliveryMethod, OrderStatus } from "@prisma/client"
+import { isValidPickupTime } from "@/lib/schedule"
 
-// Lalamove orders are booked by the customer, so they skip BOOKED
-export function getNextStatus(status: OrderStatus, deliveryMethod: DeliveryMethod): OrderStatus | null {
+// Lalamove orders are booked by the customer, so they skip BOOKED.
+// COD orders have no payment to confirm, so they skip PAYMENT_CONFIRMED.
+export function getNextStatus(
+  status: OrderStatus,
+  deliveryMethod: DeliveryMethod,
+  paymentMethod: string,
+): OrderStatus | null {
+  const isCod = paymentMethod === "Cash on delivery"
   switch (status) {
     case "PENDING":
-      return "PAYMENT_CONFIRMED"
+      return isCod ? "BOOKED" : "PAYMENT_CONFIRMED"
     case "PAYMENT_CONFIRMED":
       return deliveryMethod === "LALAMOVE" ? "DELIVERED" : "BOOKED"
     case "BOOKED":
@@ -19,7 +26,7 @@ export function getNextStatus(status: OrderStatus, deliveryMethod: DeliveryMetho
 export async function advanceOrder(orderId: string) {
   return prisma.$transaction(async (tx) => {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } })
-    const to = getNextStatus(order.status, order.deliveryMethod)
+    const to = getNextStatus(order.status, order.deliveryMethod, order.paymentMethod)
     if (!to) throw new Error("This order can't be advanced")
 
     // Only updates if the status hasn't changed since we read it
@@ -87,4 +94,16 @@ export async function updateOrderDetails(
       notes: data.notes || null,
     },
   })
+}
+
+// Moves a Lalamove pickup to an open slot, until the order is delivered or cancelled
+export async function updatePickupTime(orderId: string, pickupAt: Date) {
+  const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } })
+  if (order.deliveryMethod !== "LALAMOVE") throw new Error("Only Lalamove orders have a pickup time")
+  if (order.status === "DELIVERED" || order.status === "CANCELLED")
+    throw new Error("This order can't be changed")
+  if (!isValidPickupTime(pickupAt))
+    throw new Error("That time is no longer open. Choose another.")
+
+  await prisma.order.update({ where: { id: orderId }, data: { pickupAt } })
 }

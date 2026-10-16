@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getJtFee } from "@/lib/jt"
 import { isValidPickupTime } from "@/lib/schedule"
 import { PAYMENT_METHODS } from "@/lib/orderLabels"
+import { randomBytes } from "crypto"
 
 export const keyFor = (options: Record<string, string>) =>
   Object.keys(options).sort().map((k) => `${k}=${options[k]}`).join("|")
@@ -75,7 +76,15 @@ export async function lookupCustomerByPhone(raw: string) {
   }
 }
 
-export async function createManualOrder(raw: unknown) {
+export type OrderSource = {
+  selfService?: boolean          // only the public checkout sets this
+  conversationId?: string        // chat orders link back to their thread
+  lalamoveAcceptedAt?: Date      // when the customer accepted the Lalamove note
+  paymentProofKey?: string       // storage key of the uploaded payment screenshot
+  paymentProofAt?: Date          // when the screenshot was uploaded
+}
+
+export async function createManualOrder(raw: unknown, source: OrderSource = {}) {
   const input = inputSchema.parse(raw)
   const phone = normalizePhone(input.phone)
   if (!isPhMobile(phone)) throw new Error("Enter a valid PH mobile number, like 09171234567")
@@ -88,6 +97,9 @@ export async function createManualOrder(raw: unknown) {
     if (!isValidPickupTime(pickupAt))
       throw new Error("That pickup time is no longer available. Choose another.")
   }
+
+  if (input.deliveryMethod === "LALAMOVE" && input.paymentMethod === COD)
+    throw new Error("Cash on delivery isn't available with Lalamove. Choose another payment method.")
 
   // Prices come from the database, never from the form
   const products = await prisma.product.findMany({
@@ -198,6 +210,12 @@ export async function createManualOrder(raw: unknown) {
         codFee,
         pickupAt,
         notes: input.notes || null,
+        publicToken: source.selfService ? randomBytes(24).toString("base64url") : null,
+        selfService: source.selfService ?? false,
+        conversationId: source.conversationId ?? null,
+        lalamoveAcceptedAt: source.lalamoveAcceptedAt ?? null,
+        paymentProofKey: source.paymentProofKey ?? null,
+        paymentProofAt: source.paymentProofAt ?? null,
         items: {
           create: lines.map((line, i) => ({ ...line, variantId: variantIds[i] })),
         },
@@ -205,7 +223,7 @@ export async function createManualOrder(raw: unknown) {
           create: [{ fromStatus: null, toStatus: "PENDING", note: "Created manually" }],
         },
       },
-      select: { id: true, orderNumber: true },
+      select: { id: true, orderNumber: true, publicToken: true },
     })
   })
 }

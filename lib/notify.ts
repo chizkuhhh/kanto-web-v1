@@ -11,30 +11,36 @@ export const adminOrderUrl = (id: string) =>
   `${process.env.APP_URL}/admin/orders/${id}`
 
 // Never throws. A failed alert shouldn't break order creation.
-export async function sendTelegram(html: string) {
+export async function sendTelegram(html: string, chatId = process.env.TELEGRAM_CHAT_ID) {
   const token = process.env.TELEGRAM_BOT_TOKEN
-  const chatId = process.env.TELEGRAM_CHAT_ID
+
   if (!token || !chatId) {
     console.warn("Telegram is not configured; skipping alert")
     return false
   }
 
   try {
-    const res = await fetch(`${TELEGRAM_API}/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: html,
-        parse_mode: "HTML",
-        link_preview_options: { is_disabled: true },
-      }),
-      signal: AbortSignal.timeout(5000),
-    })
+    const res = await fetch(
+      `${TELEGRAM_API}/bot${token}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: html,
+          parse_mode: "HTML",
+          link_preview_options: { is_disabled: true },
+        }),
+        signal: AbortSignal.timeout(15000),
+      },
+    )
+
     if (!res.ok) {
-      console.error("Telegram send failed:", res.status)
+      const body = await res.text()
+      console.error("Telegram send failed:", res.status, body)
       return false
     }
+
     return true
   } catch (err) {
     console.error("Telegram error:", err)
