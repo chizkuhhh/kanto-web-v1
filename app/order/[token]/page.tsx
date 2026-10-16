@@ -4,7 +4,6 @@ import type { Metadata } from "next"
 import { prisma } from "@/lib/prisma"
 import { formatManilaDateTime, formatOrderNumber, formatPeso } from "@/lib/format"
 import { STATUS_LABELS } from "@/lib/orderLabels"
-import { CONTACT_NOTE, PAYMENT_INSTRUCTIONS } from "@/lib/paymentInstructions"
 import LalamoveLinkForm from "@/components/lalamoveLinkForm"
 import LalamovePickupDetails from "@/components/lalamovePickupDetails"
 import { isLinkWindowOpen, linkOpensAt } from "@/lib/lalamoveWindow"
@@ -47,14 +46,9 @@ export default async function OrderPage({ params }: { params: Promise<{ token: s
   if (!order || order.personalDataPurgedAt) notFound()
 
   const isLalamove = order.deliveryMethod === "LALAMOVE"
-  const isCod = order.paymentMethod === "Cash on delivery"
   const shipping = Number(order.shippingFee)
   const codFee = Number(order.codFee ?? 0)
   const total = Number(order.productTotal) + shipping + codFee
-
-  const paymentText = isCod
-    ? "Pay the courier when your order arrives."
-    : PAYMENT_INSTRUCTIONS[order.paymentMethod] ?? "Our team will send payment details shortly."
   
   const linkOpen = isLinkWindowOpen(order.pickupAt)
 
@@ -69,15 +63,6 @@ export default async function OrderPage({ params }: { params: Promise<{ token: s
           <p className="mt-4 font-semibold">{STATUS_LABELS[order.status]}</p>
           <p className="text-sm">{statusNoteFor(order)}</p>
         </div>
-
-        {order.status === "PENDING" && (
-          <div className={card}>
-            <h2 className="mb-2 font-bold">Payment</h2>
-            <p className="text-sm">{paymentText}</p>
-            <p className="mt-2 text-sm font-semibold">Amount due: {formatPeso(total)}</p>
-            <p className="mt-2 text-xs text-mine-shaft-500">{CONTACT_NOTE}</p>
-          </div>
-        )}
 
         {/* Delivery */}
         <div className={card}>
@@ -98,9 +83,12 @@ export default async function OrderPage({ params }: { params: Promise<{ token: s
               )}
             </p>
           )}
-          <p className="mt-3 text-sm text-mine-shaft-600">
-            {order.address}, {order.city}, {order.province} {order.postalCode ?? ""}
-          </p>
+          {!isLalamove && order.address && (
+            <p className="mt-3 text-sm text-mine-shaft-600">
+              {order.address}, {order.city}, {order.province} {order.postalCode ?? ""}
+            </p>
+          )}
+          
         </div>
 
         {isLalamove && order.status !== "DELIVERED" && order.status !== "CANCELLED" && (

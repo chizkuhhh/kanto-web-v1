@@ -20,8 +20,8 @@ export const DELIVERY_LABELS: Record<string, string> = {
 
 export const PAYMENT_METHODS = [
   "GCash",
-  "Bank transfer",
+  "Maya",
+  "BDO bank transfer",
+  "Security Bank transfer",
   "Cash on delivery",
-  "Cash",
-  "Other",
 ] as const

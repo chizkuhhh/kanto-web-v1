@@ -1,7 +1,9 @@
 // Shown on the order page while payment is pending
-export const PAYMENT_INSTRUCTIONS: Record<string, string> = {
-  GCash: "Send payment to GCash [number] under the name [name]. Put your order number in the reference.",
-  "Bank transfer": "Transfer to [bank] account [number] under [name]. Put your order number in the reference.",
+export const PAYMENT_INSTRUCTIONS: Record<string, string[]> = {
+  "BDO bank transfer": ["Bank: BDO", "Account number: 002400288131", "Account name: Karenina Capio"],
+  "Security Bank transfer": ["Bank: Security Bank", "Account number: 0000075199007", "Account name: Karenina Capio"],
+  GCash: ["GCash number: 09175259839", "Account name: Karenina Capio"],
+  Maya: ["Maya number: 09175259839", "Account name: Karenina Capio"],
 }
 
 export const CONTACT_NOTE =

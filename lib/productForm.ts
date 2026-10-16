@@ -50,7 +50,5 @@ export function parseProductForm(formData: FormData) {
     weightGrams: weight ? Number(weight) : null,
     images,
     variations,
-    shopeeUrl: get("shopeeUrl") || null,
-    tiktokUrl: get("tiktokUrl") || null,
   }
 }

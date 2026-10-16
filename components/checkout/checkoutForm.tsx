@@ -14,6 +14,8 @@ import {
   writeCart,
 } from "@/lib/cart"
 import { formatPeso } from "@/lib/format"
+import LalamovePickupDetails from "@/components/lalamovePickupDetails"
+import { PAYMENT_INSTRUCTIONS } from "@/lib/paymentInstructions"
 
 type Product = {
   id: string
@@ -41,6 +43,7 @@ const input = "w-full rounded-lg border border-black-haze-300 bg-black-haze-50 p
 const card = "flex flex-col gap-4 rounded-2xl border border-black-haze-200 bg-black-haze-50 p-5"
 const button =
   "rounded-full px-4 h-10 text-sm font-semibold bg-mine-shaft-800 text-black-haze-100 hover:bg-mine-shaft-900 disabled:opacity-50"
+const req = <span className="text-red-600">*</span>
 
 export default function CheckoutForm({ products, slots }: { products: Product[]; slots: Slot[] }) {
   const router = useRouter()
@@ -71,7 +74,8 @@ export default function CheckoutForm({ products, slots }: { products: Product[];
   const [proofBusy, setProofBusy] = useState(false)
 
   const isLalamove = form.deliveryMethod === "LALAMOVE"
-  const needsProof = form.paymentMethod === "GCash" || form.paymentMethod === "Bank transfer"
+  const isCod = form.paymentMethod === "Cash on delivery"
+  const needsProof = !isCod
   const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }))
 
   // Cart lines whose product still exists. index is the position in the cart.
@@ -264,7 +268,7 @@ export default function CheckoutForm({ products, slots }: { products: Product[];
         <h2 className="font-bold">Delivery and payment</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-1">
-            <span className={label}>Delivery</span>
+            <span className={label}>Delivery {req}</span>
             <select
               className={input}
               value={form.deliveryMethod}
@@ -285,7 +289,7 @@ export default function CheckoutForm({ products, slots }: { products: Product[];
             </select>
           </label>
           <label className="flex flex-col gap-1">
-            <span className={label}>Payment</span>
+            <span className={label}>Payment {req}</span>
             <select
               className={input}
               value={form.paymentMethod}
@@ -299,24 +303,41 @@ export default function CheckoutForm({ products, slots }: { products: Product[];
             </select>
           </label>
           {needsProof && (
-            <label className="flex flex-col gap-1">
-              <span className={label}>Payment screenshot</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                disabled={proofBusy}
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) uploadProof(file)
-                }}
-                className="text-sm"
-              />
+            <div className="flex flex-col gap-1">
+              <span className={label}>Payment screenshot {req}</span>
+              <label
+                className={`${button} inline-flex w-fit cursor-pointer items-center ${proofBusy ? "pointer-events-none opacity-50" : ""}`}
+              >
+                {proofBusy ? "Uploading…" : proof ? "Change screenshot" : "Choose screenshot"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={proofBusy}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) uploadProof(file)
+                  }}
+                  className="sr-only"
+                />
+              </label>
               <span className="text-xs text-mine-shaft-500">
-                {proofBusy ? "Uploading…" : proof ? `Uploaded: ${proof.name}` : "Required for GCash and bank transfer."}
+                {proof ? `Uploaded: ${proof.name}` : "Required for bank transfer and e-wallet payments."}
               </span>
-            </label>
+            </div>
           )}
         </div>
+
+        {!isCod && PAYMENT_INSTRUCTIONS[form.paymentMethod] && (
+          <div className="flex flex-col gap-1 rounded-lg border border-black-haze-200 p-4 text-sm">
+            <p className="font-semibold">Payment details</p>
+            {PAYMENT_INSTRUCTIONS[form.paymentMethod].map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+            <p className="mt-1 text-xs text-mine-shaft-500">
+              Pay the total shown below, then upload your screenshot.
+            </p>
+          </div>
+        )}
 
         {isLalamove && (
           <>
@@ -332,7 +353,7 @@ export default function CheckoutForm({ products, slots }: { products: Product[];
               I understand
             </label>
             <label className="flex flex-col gap-1">
-              <span className={label}>Pickup time</span>
+              <span className={label}>Pickup time {req}</span>
               <select
                 required
                 className={input}
@@ -347,6 +368,11 @@ export default function CheckoutForm({ products, slots }: { products: Product[];
                 ))}
               </select>
             </label>
+            <div className="flex flex-col gap-3 rounded-lg border border-black-haze-200 p-4">
+              <p className="text-sm font-semibold">Lalamove pickup details</p>
+              <p className="text-sm">Book Lalamove for the time you chose and set the pickup point to:</p>
+              <LalamovePickupDetails />
+            </div>
           </>
         )}
       </div>
@@ -354,13 +380,14 @@ export default function CheckoutForm({ products, slots }: { products: Product[];
       {/* Customer */}
       <div className={card}>
         <h2 className="font-bold">Your details</h2>
+        <p className="text-xs text-mine-shaft-500">Fields marked {req} are required.</p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-1">
-            <span className={label}>Full name</span>
+            <span className={label}>Full name {req}</span>
             <input required className={input} value={form.name} onChange={(e) => set("name", e.target.value)} />
           </label>
           <label className="flex flex-col gap-1">
-            <span className={label}>Phone</span>
+            <span className={label}>Phone {req}</span>
             <input
               required
               inputMode="tel"
@@ -370,22 +397,26 @@ export default function CheckoutForm({ products, slots }: { products: Product[];
               onChange={(e) => set("phone", e.target.value)}
             />
           </label>
-          <label className="flex flex-col gap-1 md:col-span-2">
-            <span className={label}>Address</span>
-            <input required className={input} value={form.address} onChange={(e) => set("address", e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={label}>City</span>
-            <input required className={input} value={form.city} onChange={(e) => set("city", e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={label}>Province</span>
-            <input required className={input} value={form.province} onChange={(e) => set("province", e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={label}>Postal code</span>
-            <input className={input} value={form.postalCode} onChange={(e) => set("postalCode", e.target.value)} />
-          </label>
+          {!isLalamove && (
+            <>
+              <label className="flex flex-col gap-1 md:col-span-2">
+                <span className={label}>Address {req}</span>
+                <input required className={input} value={form.address} onChange={(e) => set("address", e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={label}>City {req}</span>
+                <input required className={input} value={form.city} onChange={(e) => set("city", e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={label}>Province {req}</span>
+                <input required className={input} value={form.province} onChange={(e) => set("province", e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={label}>Postal code</span>
+                <input className={input} value={form.postalCode} onChange={(e) => set("postalCode", e.target.value)} />
+              </label>
+            </>
+          )}
         </div>
         <label className="flex flex-col gap-1">
           <span className={label}>Notes (optional)</span>
@@ -426,7 +457,7 @@ export default function CheckoutForm({ products, slots }: { products: Product[];
           </div>
         </div>
         <p className="text-xs text-mine-shaft-500">
-          After you place the order, we&apos;ll message you with payment details. Your order is held for 24 hours.
+          After you place the order, we&apos;ll confirm your payment and update your order page. Your order is held for 24 hours.
         </p>
       </div>
 

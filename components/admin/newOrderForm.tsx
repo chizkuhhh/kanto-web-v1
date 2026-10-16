@@ -101,7 +101,21 @@ export default function NewOrderForm({ products, slots }: { products: Product[];
           </label>
           <label className="flex flex-col gap-1">
             <span className={label}>Delivery</span>
-            <select className={input} value={form.deliveryMethod} onChange={(e) => set("deliveryMethod", e.target.value)}>
+            <select
+              className={input}
+              value={form.deliveryMethod}
+              onChange={(e) => {
+                const method = e.target.value
+                setForm((f) => ({
+                  ...f,
+                  deliveryMethod: method,
+                  paymentMethod:
+                    method === "LALAMOVE" && f.paymentMethod === "Cash on delivery"
+                      ? PAYMENT_METHODS[0]
+                      : f.paymentMethod,
+                }))
+              }}
+            >
               <option value="JNT">J&amp;T (you book)</option>
               <option value="LALAMOVE">Lalamove (customer books)</option>
             </select>
@@ -109,7 +123,7 @@ export default function NewOrderForm({ products, slots }: { products: Product[];
           <label className="flex flex-col gap-1">
             <span className={label}>Payment</span>
             <select className={input} value={form.paymentMethod} onChange={(e) => set("paymentMethod", e.target.value)}>
-              {PAYMENT_METHODS.map((m) => (
+              {PAYMENT_METHODS.filter((m) => !(form.deliveryMethod === "LALAMOVE" && m === "Cash on delivery")).map((m) => (
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
@@ -155,22 +169,31 @@ export default function NewOrderForm({ products, slots }: { products: Product[];
             <span className={label}>Name</span>
             <input required className={input} value={form.name} onChange={(e) => set("name", e.target.value)} />
           </label>
-          <label className="flex flex-col gap-1 md:col-span-2">
-            <span className={label}>Address</span>
-            <input required className={input} value={form.address} onChange={(e) => set("address", e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={label}>City</span>
-            <input required className={input} value={form.city} onChange={(e) => set("city", e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={label}>Province</span>
-            <input required className={input} value={form.province} onChange={(e) => set("province", e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={label}>Postal code</span>
-            <input className={input} value={form.postalCode} onChange={(e) => set("postalCode", e.target.value)} />
-          </label>
+          {form.deliveryMethod === "JNT" && (
+            <>
+              <label className="flex flex-col gap-1 md:col-span-2">
+                <span className={label}>Address</span>
+                <input required className={input} value={form.address} onChange={(e) => set("address", e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={label}>City</span>
+                <input required className={input} value={form.city} onChange={(e) => set("city", e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={label}>Province</span>
+                <input required className={input} value={form.province} onChange={(e) => set("province", e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={label}>Postal code</span>
+                <input className={input} value={form.postalCode} onChange={(e) => set("postalCode", e.target.value)} />
+              </label>
+            </>
+          )}
+          {form.deliveryMethod === "LALAMOVE" && (
+            <p className="text-xs text-mine-shaft-500 md:col-span-2">
+              No address needed. The customer enters the drop-off in their Lalamove booking.
+            </p>
+          )}
         </div>
       </div>
 

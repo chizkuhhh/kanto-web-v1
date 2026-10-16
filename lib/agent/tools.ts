@@ -96,9 +96,9 @@ const saveInput = z.object({
   customerConfirmed: z.literal(true),
   name: z.string().min(1).max(100),
   phone: z.string(),
-  address: z.string().min(1).max(200),
-  city: z.string().min(1).max(100),
-  province: z.string().min(1).max(100),
+  address: z.string().max(200).default(""),
+  city: z.string().max(100).default(""),
+  province: z.string().max(100).default(""),
   postalCode: z.string().max(10).optional(),
   notes: z.string().max(1000).optional(),
   paymentMethod: z.enum(PAYMENT_METHODS),
@@ -230,7 +230,7 @@ export const TOOLS: Anthropic.Tool[] = [
   {
     name: "save_order",
     description:
-      "Save a confirmed order as PENDING. Only call after the customer explicitly confirmed the summary. Set customerConfirmed to true only then. For Lalamove, set lalamoveDisclaimerAccepted only after the customer replied I understand.",
+      "Save a confirmed order as PENDING. Only call after the customer explicitly confirmed the summary. Set customerConfirmed to true only then. For Lalamove, set lalamoveDisclaimerAccepted only after the customer replied I understand. Address, city, and province are required for J&T and should be left empty for Lalamove.",
     input_schema: {
       type: "object",
       properties: {
@@ -263,9 +263,6 @@ export const TOOLS: Anthropic.Tool[] = [
         "customerConfirmed",
         "name",
         "phone",
-        "address",
-        "city",
-        "province",
         "paymentMethod",
         "deliveryMethod",
         "items",

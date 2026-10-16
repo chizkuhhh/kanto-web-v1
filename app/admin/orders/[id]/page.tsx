@@ -111,7 +111,9 @@ export default async function AdminOrderDetailPage({
             <div className="md:col-span-2">
               <dt className={label}>Address</dt>
               <dd>
-                {order.address}, {order.city}, {order.province} {order.postalCode ?? ""}
+                {order.address
+                  ? <>{order.address}, {order.city}, {order.province} {order.postalCode ?? ""}</>
+                  : "Lalamove: the customer books delivery to their own address"}
               </dd>
             </div>
             <div>

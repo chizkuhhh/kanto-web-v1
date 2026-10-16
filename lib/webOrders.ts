@@ -12,9 +12,9 @@ const webInput = z.object({
   paymentMethod: z.enum(PAYMENT_METHODS),
   name: z.string().trim().min(1).max(100),
   phone: z.string(),
-  address: z.string().trim().min(1).max(200),
-  city: z.string().trim().min(1).max(100),
-  province: z.string().trim().min(1).max(100),
+  address: z.string().trim().max(200),
+  city: z.string().trim().max(100),
+  province: z.string().trim().max(100),
   postalCode: z.string().trim().max(10),
   notes: z.string().trim().max(1000),
   pickupAt: z.string().optional(),
@@ -41,9 +41,11 @@ export async function placeWebOrder(raw: unknown) {
     if (!input.lalamoveAccepted) throw new Error("Please accept the Lalamove booking note first")
     if (input.paymentMethod === COD) throw new Error("Cash on delivery isn't available with Lalamove")
     if (!input.pickupAt) throw new Error("Choose a pickup time for Lalamove orders")
+  } else if (!input.address || !input.city || !input.province) {
+    throw new Error("Please enter your address, city, and province")
   }
 
-  const needsProof = input.paymentMethod === "GCash" || input.paymentMethod === "Bank transfer"
+  const needsProof = input.paymentMethod !== COD
   if (needsProof) {
     if (!input.paymentProofKey) throw new Error("Please upload your payment screenshot")
     await verifyProof(input.paymentProofKey)
@@ -52,6 +54,11 @@ export async function placeWebOrder(raw: unknown) {
   const order = await createManualOrder(
     {
       ...input,
+      // Lalamove customers enter their drop-off address in the Lalamove app
+      address: isLalamove ? "" : input.address,
+      city: isLalamove ? "" : input.city,
+      province: isLalamove ? "" : input.province,
+      postalCode: isLalamove ? "" : input.postalCode,
       channel: "WEB",
       pickupAt: isLalamove ? input.pickupAt : undefined,
     },

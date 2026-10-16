@@ -29,9 +29,9 @@ const inputSchema = z.object({
   paymentMethod: z.enum(PAYMENT_METHODS),
   name: z.string().trim().min(1).max(100),
   phone: z.string(),
-  address: z.string().trim().min(1).max(200),
-  city: z.string().trim().min(1).max(100),
-  province: z.string().trim().min(1).max(100),
+  address: z.string().trim().max(200),
+  city: z.string().trim().max(100),
+  province: z.string().trim().max(100),
   postalCode: z.string().trim().max(10),
   notes: z.string().trim().max(1000),
   pickupAt: z.string().optional(),
@@ -86,6 +86,8 @@ export type OrderSource = {
 
 export async function createManualOrder(raw: unknown, source: OrderSource = {}) {
   const input = inputSchema.parse(raw)
+  if (input.deliveryMethod === "JNT" && (!input.address || !input.city || !input.province))
+    throw new Error("Enter the address, city, and province for J&T orders")
   const phone = normalizePhone(input.phone)
   if (!isPhMobile(phone)) throw new Error("Enter a valid PH mobile number, like 09171234567")
 
@@ -200,9 +202,9 @@ export async function createManualOrder(raw: unknown, source: OrderSource = {}) 
         customerId: customer.id,
         recipientName: input.name,
         phone,
-        address: input.address,
-        city: input.city,
-        province: input.province,
+        address: input.deliveryMethod === "LALAMOVE" ? "" : input.address,
+        city: input.deliveryMethod === "LALAMOVE" ? "" : input.city,
+        province: input.deliveryMethod === "LALAMOVE" ? "" : input.province,
         postalCode: input.postalCode || null,
         paymentMethod: input.paymentMethod,
         productTotal,
