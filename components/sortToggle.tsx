@@ -19,6 +19,8 @@ export default function SortToggle() {
     function handleChange(value: string) {
         const params = new URLSearchParams(searchParams.toString())
         params.set("sort", value)
+        // Start from page 1 when the sort changes
+        params.delete("page")
         router.push(`${pathname}?${params.toString()}`)
     }
 

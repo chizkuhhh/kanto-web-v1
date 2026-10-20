@@ -25,6 +25,9 @@ export default function CategoryTabs() {
             params.delete("category")
         }
 
+        // Start from page 1 when the filter changes
+        params.delete("page")
+
         router.push(`${pathname}?${params.toString()}`)
     }
 
