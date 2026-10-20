@@ -107,7 +107,8 @@ export async function notifyCustomer(orderId: string, status: NotifyStatus) {
         data: { conversationId: order.conversationId!, role: "agent", text, metaMessageId: id ? `cw:${id}` : null },
       })
     } else {
-      await sendSms(order.phone, text)
+            // Semaphore's Smart network blocks links that start with https://
+      await sendSms(order.phone, text.replace(/https:\/\//g, ""))
     }
 
     await prisma.orderEvent.create({

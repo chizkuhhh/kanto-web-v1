@@ -41,7 +41,7 @@ async function searchProducts(raw: unknown) {
     productId: p.id,
     name: p.name,
     price: p.price ? p.price.toString() : null,
-    description: stripHtml(p.description).slice(0, 200),
+    description: stripHtml(p.description).slice(0, 1500),
     options: p.variations,
     availableCombinations: p.variants.map((v) => v.options),
   }))
