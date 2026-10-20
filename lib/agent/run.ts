@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk"
 import { TOOLS, runTool, type ToolContext } from "./tools"
-import { buildSystemPrompt } from "./prompt"
+import { buildSystemPrompt, buildTimeLine } from "./prompt"
+import { getBible } from "@/lib/bible"
 
 const client = new Anthropic()
 const MODEL = process.env.AGENT_MODEL ?? "claude-sonnet-5-5"
@@ -25,12 +26,16 @@ function toMessages(history: HistoryTurn[]): Anthropic.MessageParam[] {
 
 export async function runAgent(ctx: ToolContext, history: HistoryTurn[]): Promise<string> {
   const messages = toMessages(history)
+  const bible = await getBible()
 
   for (let step = 0; step < MAX_STEPS; step++) {
     const res = await client.messages.create({
       model: MODEL,
       max_tokens: 512,
-      system: buildSystemPrompt(new Date()),
+      system: [
+        { type: "text", text: buildSystemPrompt(bible), cache_control: { type: "ephemeral" } },
+        { type: "text", text: buildTimeLine(new Date()) },
+      ],
       tools: TOOLS,
       messages,
     })

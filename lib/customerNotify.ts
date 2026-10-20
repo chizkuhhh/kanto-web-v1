@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { formatManilaDateTime, formatOrderNumber } from "@/lib/format"
-import { sendText } from "@/lib/meta"
 import { escapeHtml, sendTelegram } from "@/lib/notify"
+import { sendBotMessage } from "@/lib/chatwoot"
 
 const SITE_URL = "https://kanto-ph.com"
 const SEMAPHORE_URL = "https://api.semaphore.co/api/v4/messages"
@@ -101,9 +101,10 @@ export async function notifyCustomer(orderId: string, status: NotifyStatus) {
 
   try {
     if (via === "chat") {
-      const messageId = await sendText(order.conversation!.senderId, text)
+      const [, accountId, cwConversationId] = order.conversation!.senderId.split(":")
+      const id = await sendBotMessage(Number(accountId), Number(cwConversationId), text)
       await prisma.message.create({
-        data: { conversationId: order.conversationId!, role: "agent", text, metaMessageId: messageId ?? null },
+        data: { conversationId: order.conversationId!, role: "agent", text, metaMessageId: id ? `cw:${id}` : null },
       })
     } else {
       await sendSms(order.phone, text)

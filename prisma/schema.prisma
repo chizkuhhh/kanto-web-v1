@@ -194,3 +194,9 @@ model Message {
 
   @@index([conversationId, createdAt])
 }
+
+model AgentBibleVersion {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+}

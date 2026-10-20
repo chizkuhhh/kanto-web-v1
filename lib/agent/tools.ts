@@ -8,8 +8,13 @@ import { createManualOrder } from "@/lib/manualOrders"
 import { escapeHtml, notifyNewOrder, sendTelegram } from "@/lib/notify"
 import { formatOrderNumber } from "@/lib/format"
 import { PAYMENT_METHODS } from "@/lib/orderLabels"
+import { setConversationOpen } from "@/lib/chatwoot"
 
-export type ToolContext = { conversationId: string; channel: "MESSENGER" | "INSTAGRAM" }
+export type ToolContext = {
+  conversationId: string
+  channel: "MESSENGER" | "INSTAGRAM"
+  chatwoot?: { accountId: number; conversationId: number }
+}
 
 const stripHtml = (s: string) => s.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
 
@@ -161,9 +166,17 @@ async function handoff(ctx: ToolContext, raw: unknown) {
     where: { id: ctx.conversationId },
     data: { botPaused: true },
   })
-  await sendTelegram(
-    `<b>Handoff needed</b>\n${escapeHtml(reason)}\nConversation: ${escapeHtml(ctx.conversationId)}`,
-  )
+  let where = `Conversation: ${escapeHtml(ctx.conversationId)}`
+  if (ctx.chatwoot) {
+    // Open the conversation in Chatwoot so a human picks it up and the bot stops receiving it
+    await setConversationOpen(ctx.chatwoot.accountId, ctx.chatwoot.conversationId).catch((err) =>
+      console.error("Chatwoot handoff failed:", err),
+    )
+    const base = (process.env.CHATWOOT_BASE_URL ?? "").replace(/\/$/, "")
+    const url = `${base}/app/accounts/${ctx.chatwoot.accountId}/conversations/${ctx.chatwoot.conversationId}`
+    where = `<a href="${url}">Open in Chatwoot</a>`
+  }
+  await sendTelegram(`<b>Handoff needed</b>\n${escapeHtml(reason)}\n${where}`)
   return { handedOff: true }
 }
 

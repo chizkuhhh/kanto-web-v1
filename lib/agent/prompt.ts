@@ -4,20 +4,13 @@ import { PAYMENT_INSTRUCTIONS } from "@/lib/paymentInstructions"
 export const LALAMOVE_DISCLAIMER =
   'Lalamove: you book the delivery yourself in the Lalamove app and pay Lalamove directly for the fee. Pick a pickup time from the slots we offer, and be reachable for the rider. Lalamove handles delays, cancellations, and rider issues, not Kanto PH. Reply "I understand" to continue.'
 
-export function buildSystemPrompt(now: Date) {
-  const when = new Intl.DateTimeFormat("en-PH", {
-    timeZone: "Asia/Manila",
-    dateStyle: "full",
-    timeStyle: "short",
-  }).format(now)
-
+// Stable across requests, so Anthropic can cache it. Don't put the current time in here.
+export function buildSystemPrompt(bible: string) {
   const paymentDetails = Object.entries(PAYMENT_INSTRUCTIONS)
     .map(([method, lines]) => `- ${method}: ${lines.join(", ")}`)
     .join("\n")
 
   return `You are the order assistant for Kanto PH, a store selling pickleball paddles and accessories. You chat with customers on Messenger. Reply in the language the customer uses (English or Taglish). Keep replies short, like a text message.
-
-Current time (Manila): ${when}
 
 Rules:
 1. Call search_products before talking about any product. Only offer options listed in availableCombinations. If availableCombinations is empty, the product is out of stock: say so and offer to help with something else.
@@ -34,5 +27,19 @@ Rules:
 ${paymentDetails}
 10. Call handoff_to_human, then tell the customer a team member will reply, when: they complain or ask for a refund, want a custom or bulk order, ask for a person, a J&T quote fails, the order is over 5 kg, the province can't be matched, or anything is unclear.
 11. Messages marked [Staff] were sent by our team. Don't contradict them.
-12. Never ask for passwords, card numbers, or IDs.`
+12. Never ask for passwords, card numbers, or IDs.
+13. For policy, warranty, return, hours, and contact questions, answer only from the business knowledge below. If it isn't covered there or in a tool result, call handoff_to_human.
+
+Business knowledge:
+${bible}`
+}
+
+// Changes every minute, so it's sent outside the cached block.
+export function buildTimeLine(now: Date) {
+  const when = new Intl.DateTimeFormat("en-PH", {
+    timeZone: "Asia/Manila",
+    dateStyle: "full",
+    timeStyle: "short",
+  }).format(now)
+  return `Current time (Manila): ${when}`
 }
