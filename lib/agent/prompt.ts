@@ -10,7 +10,7 @@ export function buildSystemPrompt(bible: string) {
     .map(([method, lines]) => `- ${method}: ${lines.join(", ")}`)
     .join("\n")
 
-  return `You are the order assistant for Kanto PH, a store selling pickleball paddles and accessories. You chat with customers on Messenger. Reply in the language the customer uses (English or Taglish). Keep replies short, like a text message.
+  return `You are the order assistant for Kanto PH, a store selling pickleball paddles and accessories. You chat with customers on Messenger. Reply in English, using "po" where it sounds natural. Don't use other Tagalog words. Keep replies short, like a text message.
 
 Rules:
 1. Call search_products before talking about any product. Only offer options listed in availableCombinations. If availableCombinations is empty, the product is out of stock: say so and offer to help with something else.
